@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<title>Parity Block Challenge</title>
+<style>
+    body {
+        font-family: Arial, sans-serif;
+        background: #eef2f7;
+        text-align: center;
+        padding: 20px;
+    }
+    table {
+        margin: auto;
+        border-collapse: collapse;
+    }
+    td {
+        width: 45px;
+        height: 45px;
+        border: 1px solid #333;
+        font-size: 20px;
+        font-weight: bold;
+        cursor: pointer;
+        background: white;
+    }
+    .parity {
+        background: #dbeafe;
+    }
+    .disabled {
+        pointer-events: none;
+        opacity: 0.6;
+    }
+    input {
+        padding: 6px;
+        font-size: 14px;
+    }
+    button {
+        margin: 6px;
+        padding: 8px 16px;
+        font-size: 15px;
+        cursor: pointer;
+    }
+</style>
+</head>
+<body>
+
+<h2>🎮 Parity Block Challenge</h2>
+
+<p>
+Nama Siswa:
+<input type="text" id="studentName" placeholder="Nama lengkap">
+<button onclick="startStudent()">Mulai</button>
+</p>
+
+<p>Mode: <b id="parityMode">Even Parity</b></p>
+
+<p>
+Level: <b id="level">1</b> |
+Streak: <b id="streak">0</b>/5 |
+Skor: <b id="score">0</b> |
+Nyawa: <b id="lives">❤️❤️❤️</b>
+</p>
+
+<div id="game"></div>
+<p id="info"></p>
+
+<button onclick="newGame()">Soal Baru</button>
+<button onclick="resetGame()">Restart</button>
+
+<script>
+// ================== KONFIGURASI ==================
+const SHEET_API_URL = "https://script.google.com/macros/s/AKfycbzHcPch6ifCloQcsqzFJqwKWeMCvnFke830HdlDbK9C-w625xRO1uosVuC4gyWpGC7lBA/exec";
+
+// ================== VARIABEL GAME ==================
+let level = 1;
+let streak = 0;
+let score = 0;
+let size = 3;
+let maxLives = 3;
+let lives = maxLives;
+let errorRow, errorCol;
+let gameOver = false;
+let parityMode = "even";
+let currentStudent = "";
+
+// ================== GAME LOGIC ==================
+function randomBit() {
+    return Math.random() > 0.5 ? 1 : 0;
+}
+
+function generateMatrix() {
+    let matrix = [];
+    for (let i = 0; i < size; i++) {
+        matrix[i] = [];
+        for (let j = 0; j < size; j++) {
+            matrix[i][j] = randomBit();
+        }
+    }
+    return matrix;
+}
+
+function addParity(matrix) {
+    let table = [];
+
+    for (let i = 0; i < size; i++) {
+        table[i] = [...matrix[i]];
+        let ones = matrix[i].filter(b => b === 1).length;
+        let parityBit =
+            parityMode === "even"
+                ? (ones % 2 === 0 ? 0 : 1)
+                : (ones % 2 === 0 ? 1 : 0);
+        table[i].push(parityBit);
+    }
+
+    let lastRow = [];
+    for (let j = 0; j <= size; j++) {
+        let ones = 0;
+        for (let i = 0; i < size; i++) {
+            ones += table[i][j];
+        }
+        let parityBit =
+            parityMode === "even"
+                ? (ones % 2 === 0 ? 0 : 1)
+                : (ones % 2 === 0 ? 1 : 0);
+        lastRow.push(parityBit);
+    }
+
+    table.push(lastRow);
+    return table;
+}
+
+function introduceError(table) {
+    errorRow = Math.floor(Math.random() * size);
+    errorCol = Math.floor(Math.random() * size);
+    table[errorRow][errorCol] ^= 1;
+}
+
+function drawTable(table) {
+    let html = "<table>";
+    for (let i = 0; i < table.length; i++) {
+        html += "<tr>";
+        for (let j = 0; j < table[i].length; j++) {
+            let cls = (i === size || j === size) ? "parity" : "";
+            html += `<td class="${cls}" onclick="checkCell(${i},${j})">${table[i][j]}</td>`;
+        }
+        html += "</tr>";
+    }
+    html += "</table>";
+    document.getElementById("game").innerHTML = html;
+}
+
+function checkCell(r, c) {
+    if (gameOver) return;
+
+    if (r === errorRow && c === errorCol) {
+        score += 10;
+        streak++;
+        document.getElementById("info").innerHTML = "✅ Tepat!";
+
+        if (streak === 5) {
+            level++;
+            size++;
+            streak = 0;
+            lives = maxLives;
+            document.getElementById("info").innerHTML =
+                "🎉 LEVEL UP! Ukuran matriks bertambah";
+        }
+    } else {
+        streak = 0;
+        lives--;
+        score -= 5;
+        document.getElementById("info").innerHTML = "❌ Salah!";
+
+        if (lives === 0) {
+            gameOver = true;
+            document.getElementById("info").innerHTML =
+                "💀 GAME OVER — Skor dikirim ke guru";
+            sendToSpreadsheet();
+            document.getElementById("game").classList.add("disabled");
+            updateInfo();
+            return;
+        }
+    }
+
+    updateInfo();
+    setTimeout(newGame, 700);
+}
+
+function updateInfo() {
+    document.getElementById("level").innerText = level;
+    document.getElementById("streak").innerText = streak;
+    document.getElementById("score").innerText = score;
+    document.getElementById("lives").innerText = "❤️".repeat(lives);
+}
+
+// ================== CONTROL ==================
+function startStudent() {
+    const name = document.getElementById("studentName").value.trim();
+    if (!name) {
+        alert("Masukkan nama siswa!");
+        return;
+    }
+    currentStudent = name;
+    resetGame();
+}
+
+function newGame() {
+    if (gameOver) return;
+
+    parityMode = Math.random() > 0.5 ? "even" : "odd";
+    document.getElementById("parityMode").innerText =
+        parityMode === "even" ? "Even Parity" : "Odd Parity";
+
+    let matrix = generateMatrix();
+    let table = addParity(matrix);
+    introduceError(table);
+    drawTable(table);
+}
+
+function resetGame() {
+    level = 1;
+    size = 3;
+    streak = 0;
+    score = 0;
+    lives = maxLives;
+    gameOver = false;
+    document.getElementById("game").classList.remove("disabled");
+    document.getElementById("info").innerHTML = "";
+    updateInfo();
+    newGame();
+}
+
+// ================== GOOGLE SHEET ==================
+function sendToSpreadsheet() {
+    if (!currentStudent) return;
+
+    fetch(SHEET_API_URL, {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+            nama: currentStudent,
+            skor: score,
+            level: level,
+            mode: parityMode === "even" ? "Even" : "Odd"
+        })
+    })
+    .then(res => res.json())
+    .then(data => {
+        console.log("RESPON SHEET:", data);
+    })
+    .catch(err => {
+        console.error("GAGAL KIRIM:", err);
+    });
+}
+
+</script>
+
+</body>
+</html>
