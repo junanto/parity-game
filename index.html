@@ -232,28 +232,21 @@ function resetGame() {
 
 // ================== GOOGLE SHEET ==================
 function sendToSpreadsheet() {
-    if (!currentStudent) return;
+    const formURL = "<iframe src="https://docs.google.com/forms/d/e/1FAIpQLSd1UPkbvN3A0xIvy5DtaIOlIj7KvD_Ns2S5UR1q1NHMe_nmlw/viewform?embedded=true" width="640" height="776" frameborder="0" marginheight="0" marginwidth="0">Loading…</iframe>";
 
-    fetch(SHEET_API_URL, {
+    const formData = new FormData();
+    formData.append("entry.123456", currentStudent);
+    formData.append("entry.654321", score);
+    formData.append("entry.111111", level);
+    formData.append("entry.222222", parityMode);
+
+    fetch(formURL, {
         method: "POST",
-        headers: {
-            "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-            nama: currentStudent,
-            skor: score,
-            level: level,
-            mode: parityMode === "even" ? "Even" : "Odd"
-        })
-    })
-    .then(res => res.json())
-    .then(data => {
-        console.log("RESPON SHEET:", data);
-    })
-    .catch(err => {
-        console.error("GAGAL KIRIM:", err);
+        mode: "no-cors",
+        body: formData
     });
 }
+
 
 </script>
 
