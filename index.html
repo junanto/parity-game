@@ -64,13 +64,14 @@ Nyawa: <b id="lives">❤️❤️❤️</b>
 <div id="game"></div>
 <p id="info"></p>
 
-<button onclick="newGame()">Soal Baru</button>
 <button onclick="resetGame()">Restart</button>
 
+<div id="leaderboard" class="leaderboard"></div>
+    
 <script>
 // ================== KONFIGURASI ==================
 const SHEET_API_URL = "https://script.google.com/macros/s/AKfycbwwpZQ5Qn9xuMZiNzyP3hHD-IEr4jYqkceAbD0pHDYeTE9csxb33s70u86VmfWlv-bstA/exec";
-
+const LEADERBOARD_URL = "https://script.google.com/macros/s/AKfycbwWKPnkws4ptJZPA1O7tiRRRwmqAvKP4Jy7eV3Sk-oZs92rBMX7-HDPm9UP-opa1e3-4A/exec";
 // ================== VARIABEL GAME ==================
 let level = 1;
 let streak = 0;
@@ -176,6 +177,7 @@ function checkCell(r, c) {
             document.getElementById("info").innerHTML =
                 "💀 GAME OVER — Skor dikirim ke guru";
             sendToSpreadsheet();
+            loadLeaderboard();
             document.getElementById("game").classList.add("disabled");
             updateInfo();
             return;
@@ -251,6 +253,28 @@ function sendToSpreadsheet() {
     console.log("Data terkirim ke Google Form");
 }
 
+    // ================= LEADERBOARD =================
+function loadLeaderboard(){
+    fetch(LEADERBOARD_URL)
+    .then(res=>res.json())
+    .then(data=>{
+        let html="<h3>🏆 LEADERBOARD TOP 10</h3><table border='1' cellpadding='5'>";
+        html+="<tr><th>Rank</th><th>Nama</th><th>Skor</th><th>Level</th></tr>";
+
+        data.forEach((d,i)=>{
+            let medal=i===0?"🥇":i===1?"🥈":i===2?"🥉":i+1;
+            html+=`<tr>
+                <td>${medal}</td>
+                <td>${d.nama}</td>
+                <td>${d.skor}</td>
+                <td>${d.level}</td>
+            </tr>`;
+        });
+
+        html+="</table>";
+        document.getElementById("leaderboard").innerHTML=html;
+    });
+}
 
 </script>
 
